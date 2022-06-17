@@ -18,6 +18,7 @@ from DQM.utils.logging import begin_log
 class Metric(object):
     __name__ = 'Metric'
     filters = {}
+    metric = None
     def __init__(self,model,alias):
         logging.info('Inicializando clase basada en la clase Metric...')
         self.model = model
@@ -37,16 +38,14 @@ class Metric(object):
 
     def plot_metric(self):
         fig,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2)
-        src = self.model.src
-        data = src.data
         metric_obvs = self.matrix.mean(axis=0)
         metric_entries = self.metric
-        labels = data['labels']
-        bad = data.index[labels == False]
+  
+        bad = np.where(self.data_labels==False)[0]
 
         ax1.set_title('Distribución sobre el observable')
         ax1.step(
-            src.bins,
+            self.data_bins,
             metric_obvs,
             where='mid',
             label=self.__name__,
@@ -71,7 +70,7 @@ class Metric(object):
 
         ax3.set_title('Distribución sobre las entradas')
         ax3.step(
-            range(src.Nentries),
+            range(len(self.data_labels)),
             metric_entries,
             where='mid',
             label=self.__name__,

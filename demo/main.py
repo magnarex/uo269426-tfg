@@ -24,12 +24,51 @@ begin_log(parent,'main')
 
 
 
-train, valid = Data('A','eta').training_validation(Fgood=0.6,Fbad=0.8)
+
+data = Data('D','eta').minimum_entries(200).normalize()
+train, valid = data.training_validation(Fgood=0.6,Fbad=0.8)
+# valid = Data('C','eta').minimum_entries(200).normalize()
 model = Model()
 model.train(train,2)
 model.add_metric(MSE,'test_mse')
 model.add_filter(
     MinMax,
     metric_alias='test_mse',
-    args=(0,1.5e-6)
+    args=(0,7e-6)
 )
+model.eval(valid)
+model.confusion(valid)
+model.metrics['test_mse'].plot_metric()
+
+
+
+
+# data = Data('D','eta').minimum_entries(200).normalize()
+# train, valid = data.training_validation(Fgood=0.6,Fbad=0.8)
+
+# model.save('test_D')
+
+
+thresh_ran = np.logspace(-6,-5,500+1)
+df = pd.DataFrame({},index=thresh_ran,columns=['TP','TN','FP','FN','TPR','TNR','PPV','FOR'])
+
+
+model = Model.load('test_D')
+model.add_metric(MSE,'test_mse')
+valid = Data('C','eta').minimum_entries(200).normalize()
+
+for thresh in thresh_ran:
+    model.add_filter(
+        MinMax,
+        metric_alias='test_mse',
+        args=(0,thresh)
+    )
+    df.loc[thresh] = pd.Series(model.confusion(valid))
+    model.rmv_filter('MinMax_01','test_mse')
+
+fig,ax = plt.subplots(1,1)
+for col in ['TPR','TNR','PPV','FOR']:
+    ax.plot(thresh_ran,df[col],label=col)
+ax.set_xscale('log')
+ax.legend()
+plt.show(block=True)

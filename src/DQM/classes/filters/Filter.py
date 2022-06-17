@@ -16,13 +16,16 @@ from DQM.utils.logging import begin_log
 
 class Filter(object):
     __name__ = 'Filter'
-    def __init__(self,target,*params,doFilter=True):
+    def __init__(self,target,*params,eval=True):
         self.target = target.__name__
         self.params = params
-        if doFilter: self.mask = self.filter(target)
+        if eval: self.eval(target)
     
     def filter(self,target):
         pass
+
+    def eval(self,target):
+        self.mask = self.filter(target)
 
     def __str__(self):
         return 'Representación del filtro en string.'

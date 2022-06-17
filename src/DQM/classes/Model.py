@@ -26,12 +26,12 @@ class Model(object):
     seed = None
     N = None
     tol = None
-
     flags = {
         'trained'   : False,
     }
 
     metrics = {}
+    filters = {}
 
     def __init__(self):
         logging.info('Se ha creado el objeto Modelo a partir del objeto Data.')
@@ -115,15 +115,10 @@ class Model(object):
             +
             '\tfilters:\n'
             +
-            '\n'.join(sum([
-                    [
-                        f'\t\t- {filter_alias} ({filter.__name__})\t: {str(filter)}'
-                        for filter_alias,filter in metric.filters.items()
-                    ]
-                    for metric_alias,metric in self.metrics.items()
-                ],
-                []    
-            ))
+            '\n'.join([
+                f'\t\t- {filter_alias} ({filter.__name__})\t: {str(filter)}'
+                for filter_alias,filter in self.filters.items()
+            ])
             +
             '\n'
         )
@@ -253,9 +248,15 @@ class Model(object):
         
         
         metric.filters[alias] = filter_obj
+        self.update_filters()
         self.model_info()
     
 
+    def update_filters(self):
+        filters = {}
+        for model in self.metrics.values():
+            filters.update(model.filters)
+        self.filters = filters
 
 
 
@@ -273,28 +274,49 @@ class Model(object):
         name = filter.__name__
         logging.info(f'Eliminando el filtro {alias} ({name}): {filter.min} < {metric.__name__} < {filter.max}.')
         del metric.filters[alias]
+        self.update_filters()
         self.model_info()
 
 
+    def eval_metrics(self,data_set,metrics=None):
+        if metrics is None:
+            metrics = self.metrics
+
+        for metric in metrics.values():
+            metric.eval(data_set)
+    
+    def eval_filters(self,filters=None):
+        labels = 1
+
+        for metric in self.metrics.values():
+            for filter in metric.filters.values():
+                filter.eval(metric)
+                labels = labels*filter.mask
+
+        return labels
 
 
-    def eval(self):
+    def eval(self,data_set):
+        #TODO: Dar una lista de las métricas/filtros que se quieren evaluar.
 
         #TODO: Evaluar la medición del modelo según los datos dados.
-        #TODO: Dar una lista de las métricas/filtros que se quieren evaluar.
+        
         # Reconstruye los datos introducidos
-        # Calcula las métricas
-        # Colapsa todos los filtros para calcular el valor de las etiquetas.
-        labels = np.ones(self.src.Nentries)
-        for filter in self.filters.values():
-            labels *= filter.value
-        self.recon_labels = labels
-    
-    def confusion(self,test_set):
+        test_recon = self.recon(data_set)
 
-        real = test_set.data['labels']
-        recon = self.recon_labels
-        total = test_set.Nentries
+        # Calcula las métricas
+        self.eval_metrics(data_set)
+        # Colapsa todos los filtros para calcular el valor de las etiquetas.
+        return self.eval_filters()
+
+
+
+
+    def confusion(self,data_set):
+
+        real = data_set.data['labels']
+        recon = self.eval(data_set)
+        total = data_set.Nentries
         
         is_P = recon == True
         is_N = recon == False
@@ -361,7 +383,18 @@ class Model(object):
 
         )
 
+        stats = {
+            'TP'    :TP,
+            'TN'    :TN,
+            'FP'    :FP,
+            'FN'    :FN,
+            'TPR'   :TPR,
+            'TNR'   :TNR,
+            'PPV'   :PPV,
+            'FOR'   :FOR,
+        }
 
+        return stats
 
 
 

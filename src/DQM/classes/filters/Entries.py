@@ -12,24 +12,23 @@ import matplotlib.pyplot as plt
 from DQM.utils.data import parent
 from DQM.utils.logging import begin_log
 from DQM.classes.filters.Filter import Filter
-from DQM.classes.metrics.Metric import Metric
 
-class MinMax(Filter):
-    __name__ = 'MinMax'
-    def __init__(self,target:Metric,min,max):
-        self.min = min
-        self.max = max
-        super().__init__(target, min, max,eval=False)
+class Entries(Filter):
+    __name__ = 'Entries'
+    def __init__(self,target,min_entries):
+        self.min_entries = min_entries
+        super().__init__(target, min_entries)
     
-    def filter(self,target:Metric):
+    def filter(self,target):
         # print('Self Min',self.min,type(self.min))
         # print('Target Metric',target.metric,type(target.metric))
-        return (self.min <= target.metric)&(target.metric <= self.max)
+        return target.data['entries'] >= self.min_entries
 
     def __str__(self):
-        return f'{self.min} <= {self.target} <= {self.max}'
+        return f'#entries en {self.target} >= {self.min_entries}'
 
 
 
 if __name__ == '__main__':
-    begin_log(parent,'MinMax')
+    from DQM.classes.Data import Data
+    begin_log(parent,'Entries')
