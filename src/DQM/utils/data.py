@@ -10,7 +10,7 @@
 
 from pathlib import Path
 import os
-
+import json
 
 # ## Código
 
@@ -19,32 +19,6 @@ import os
 # In[7]:
 
 
-names = {
-    "chi2": {
-        "A": "GlbMuon_Glb_chi2OverDf_MuonCert_Labeled_UL2018A_Reduced",
-        "B": "GlbMuon_Glb_chi2OverDf_MuonCert_Labeled_UL2018B_Reduced",
-        "C": "GlbMuon_Glb_chi2OverDf_MuonCert_Labeled_UL2018C_Reduced",
-        "D": "GlbMuon_Glb_chi2OverDf_MuonCert_Labeled_UL2018D_Reduced"
-    },
-    "eta": {
-        "A": "GlbMuon_Glb_eta_MuonCert_Labeled_UL2018A_Reduced",
-        "B": "GlbMuon_Glb_eta_MuonCert_Labeled_UL2018B_Reduced",
-        "C": "GlbMuon_Glb_eta_MuonCert_Labeled_UL2018C_Reduced",
-        "D": "GlbMuon_Glb_eta_MuonCert_Labeled_UL2018D_Reduced"
-    },
-    "phi": {
-        "A": "GlbMuon_Glb_phi_MuonCert_Labeled_UL2018A_Reduced",
-        "B": "GlbMuon_Glb_phi_MuonCert_Labeled_UL2018B_Reduced",
-        "C": "GlbMuon_Glb_phi_MuonCert_Labeled_UL2018C_Reduced",
-        "D": "GlbMuon_Glb_phi_MuonCert_Labeled_UL2018D_Reduced"
-    },
-    "pt": {
-        "A": "GlbMuon_Glb_pt_MuonCert_Labeled_UL2018A_Reduced",
-        "B": "GlbMuon_Glb_pt_MuonCert_Labeled_UL2018B_Reduced",
-        "C": "GlbMuon_Glb_pt_MuonCert_Labeled_UL2018C_Reduced",
-        "D": "GlbMuon_Glb_pt_MuonCert_Labeled_UL2018D_Reduced"
-    }
-}
 
 
 # ### Directorio padre
@@ -53,3 +27,12 @@ names = {
 
 
 parent = os.getcwd().split('DQM-DC NMF')[0]+'DQM-DC NMF'
+
+with open(parent+'/meta/file_names.json','r+') as file:
+    names = json.load(file)
+
+with open(parent+'/meta/train_data.json','r+') as file:
+    train_data_dict = json.load(file)
+
+with open(parent+'/meta/train_cfg.json','r+') as file:
+    train_cfg_dict = json.load(file)

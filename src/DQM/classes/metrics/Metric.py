@@ -57,6 +57,7 @@ class Metric(object):
         ax1.legend()
 
         ax2.set_title('Distribución sobre la métrica')
+
         ax2.hist(
             metric_entries,
             label=self.__name__,
@@ -67,6 +68,7 @@ class Metric(object):
             bins = 100
         )
         ax2.legend()
+        # ax2.set_xscale('log')
 
         ax3.set_title('Distribución sobre las entradas')
         ax3.step(

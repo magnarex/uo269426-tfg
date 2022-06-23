@@ -1,7 +1,6 @@
 import sys
 import os
 
-from sklearn import metrics
 parentdir = os.getcwd().split('DQM-DC NMF')[0]+'DQM-DC NMF'
 sys.path.insert(0, parentdir+'/src')
 del parentdir
@@ -11,7 +10,10 @@ import numpy as np
 import logging
 import pickle
 from sklearn.decomposition import NMF
+from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+
+
 from DQM.utils.data import parent
 from DQM.utils.logging import begin_log
 from DQM.classes.filters.Filter import Filter
@@ -23,17 +25,18 @@ class Model(object):
     # ha entrenado, ya que hace que almacenarlo sea muy costoso.
 
     #TODO: Añadir funcionalidad de entrenar y evaluar por separado.
-    seed = None
-    N = None
-    tol = None
-    flags = {
-        'trained'   : False,
-    }
-
-    metrics = {}
-    filters = {}
+    
+    
 
     def __init__(self):
+        self.metrics = {}
+        self.filters = {}
+        self.flags = {
+            'trained'   : False,
+        }
+        self.seed = None
+        self.N = None
+        self.tol = None
         logging.info('Se ha creado el objeto Modelo a partir del objeto Data.')
 
     def train(self,train_set,N,max_iter=10000,tol=1e-4,seed=None):     
@@ -126,7 +129,7 @@ class Model(object):
 
     def plot_components(self):
         fig,ax = plt.subplots(1,1)
-        comp = self.components
+        comp = self.model.components_
         ax.step(self.bins,comp.T,where='mid')
         ax.legend([f'Comp. {i}' for i in range(self.N)])
         plt.show(block=True)
@@ -308,6 +311,32 @@ class Model(object):
         self.eval_metrics(data_set)
         # Colapsa todos los filtros para calcular el valor de las etiquetas.
         return self.eval_filters()
+
+
+    def roc_curve(self,data_set,lw=2):
+        real_labels = data_set.data['labels'].values
+        reco_labels = self.eval(data_set)
+        FPR, TPR, _ = roc_curve(real_labels,reco_labels)
+
+        logging.info(f'Número de puntos de la curva: {len(FPR)}.')
+        roc_auc = auc(FPR, TPR)
+        fig,ax = plt.subplots(1,1)
+        ax.plot(
+            FPR,
+            TPR,
+            color="darkorange",
+            lw=lw,
+            label="ROC curve (area = %0.2f)" % roc_auc,
+        )
+        plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+        ax.set_xlabel("False Positive Rate")
+        ax.set_ylabel("True Positive Rate")
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.legend(loc="lower right")
+        plt.show()
+
+
 
 
 

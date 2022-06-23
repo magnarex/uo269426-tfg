@@ -60,6 +60,7 @@ class Data(object):
         logging.info('Se han leído los datos desde un objeto pandas.DataFrame.')
         self.data = df
         self.update_attributes()
+        return self
     
     def normalize(self):
         # Ahora las cuentas de los histogramas están en tantos por uno.
@@ -182,6 +183,39 @@ class Data(object):
 
         del data
 
+    def collapse_LS(self):
+        data = self.data
+        hname  = data.loc[0]['hname']
+        Xbins  = data.loc[0]['Xbins']
+        Xmin  = data.loc[0]['Xmin']
+        Xmax  = data.loc[0]['Xmax']
+        new_data = pd.DataFrame(columns=data.columns).drop('fromlumi',axis=1)
+        runs = set(data['fromrun'].values)
+
+        logging.info('Se procede a colapsar las LS:')
+        for fromrun in runs:
+            slice = data[data['fromrun'] == fromrun]
+            entries = np.sum(slice['entries'])
+            histo = np.stack(slice['histo'].to_numpy()).sum(axis=0)
+            labels = slice['labels'].values[0] #porque es la misma para todas las LS de una run
+            new_row = {
+                'fromrun'   : fromrun,
+                'labels'    : labels,
+                'hname'     : hname,
+                'histo'     : [histo],
+                'entries'   : entries,
+                'Xbins'     : Xbins,
+                'Xmin'      : Xmin,
+                'Xmax'      : Xmax
+            }
+
+            new_data = pd.concat([new_data,pd.DataFrame(new_row)],ignore_index=True,axis=0)
+        logging.info('Se ha terminado de colapsar las LS.\n')
+        self.data = new_data
+        self.update_attributes()
+        # logging.info(f'{new_row}')
+
+        return self
 
     
 
