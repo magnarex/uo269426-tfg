@@ -24,19 +24,21 @@ class Validation(Filter):
 
     def filter(self, target):
         """
-        No queremos guardar target en memoria porque suelen ser un montón de datos ~1e5.
+        Esta función es la que calcula el filtro. Intenta adquirir las etiquetas del entrenamiento
+         e invertirlas y, si no las hay, da error.
+
+        - Variables:
+            - target    :   Objeto sobre el cual se va a aplicar el filtro.
+
+        - Returns:
+            - mask      :   Valores booleanos que constituyen el filtro.
         """
+
         try:
-            valid = np.logical_not(target.training.mask)
+            mask = np.logical_not(target.training.mask)
         except AttributeError as err:
             logging.info('Primero se tiene que crear el set de entrenamiento.')
             raise err
-        return valid
+        return mask
 
-
-
-if __name__ == '__main__':
-    begin_log(parent,'Training')
-    from DQM.classes.Data import Data
-    data = Data('A','eta')
-    train, valid = data.training_validation()
+    

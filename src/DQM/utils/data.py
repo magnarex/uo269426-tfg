@@ -36,3 +36,14 @@ with open(parent+'/meta/train_data.json','r+') as file:
 
 with open(parent+'/meta/train_cfg.json','r+') as file:
     train_cfg_dict = json.load(file)
+
+with open(parent+'/meta/filter_cfg.json','r+') as file:
+    filter_cfg_dict = json.load(file)
+
+with open(parent+'/meta/cut_cfg.json','r+') as file:
+    cut_cfg_dict = json.load(file)
+
+with open(parent+'/meta/info.json','r+') as file:
+    info = json.load(file)
+    obvs_list = info['obvs']
+    era_list = info['eras']
