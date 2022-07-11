@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 import logging
 import pickle
+from sklearnex import patch_sklearn
+patch_sklearn()
 from sklearn.decomposition import NMF
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
@@ -37,7 +39,7 @@ class Model(object):
         self.seed = None
         self.N = None
         self.tol = None
-        logging.info('Se ha creado el objeto Modelo a partir del objeto Data.')
+        logging.debug('Se ha creado el objeto Model.')
 
     def train(self,train_set,N,max_iter=10000,tol=1e-4,seed=None):     
         self.period = train_set.period
@@ -61,9 +63,9 @@ class Model(object):
             random_state=seed,
         )
 
-        logging.info(f'Comienza el entrenamiento del modelo con {N} componentes y {max_iter} iteraciones máximas.')
+        logging.debug(f'Comienza el entrenamiento del modelo con {N} componentes y {max_iter} iteraciones máximas.')
         self.W = model.fit(V)
-        logging.info('El entrenamiento del modelo ha finalizado.')
+        logging.debug('El entrenamiento del modelo ha finalizado.')
 
         # self.components = model.components_
         self.model = model
@@ -71,6 +73,8 @@ class Model(object):
 
         del V
         del train_set
+
+        return self
 
     def recon(self,test_set):
         W = self.model.transform(test_set.get_all())
@@ -87,15 +91,15 @@ class Model(object):
         
         self.model_info()
         pickle.dump(self,open(f'{parentdir}/{filename}.model','wb+'))
-        logging.info(f'El modelo ha sido guardado en "{parentdir}/{filename}.model".')
+        logging.debug(f'El modelo ha sido guardado en "{parentdir}/{filename}.model".')
 
-    def load(filename=None,parentdir=None):
+    def load(self,filename=None,parentdir=None):
         if parentdir is None:
             parentdir = parent +'/models'
 
         model = pickle.load(open(f'{parentdir}/{filename}.model','rb'))
         
-        logging.info(f'El modelo ha sido cargado de "{parentdir}/{filename}.model".')
+        logging.debug(f'El modelo ha sido cargado de "{parentdir}/{filename}.model".')
         model.model_info()
         return model
     
@@ -148,7 +152,7 @@ class Model(object):
         metric_obj = metric(self,alias=alias)
         self.metrics[alias] = metric_obj
 
-        logging.info(
+        logging.debug(
             f'Se ha añadido la métrica {metric_name} bajo el alias {alias}.'
         )
         self.model_info()
@@ -221,14 +225,13 @@ class Model(object):
 
 
 
-    def plot_metric(self,alias):
-        self.metrics[alias].plot_metric()
+    def plot_metric(self,alias,*args,**kwargs):
+        self.metrics[alias].plot_metric(*args,**kwargs)
 
 
 
 
-    def add_filter(self, filter : Filter, metric_alias, args = [], alias=None,
-                   min=-np.inf,max=np.inf):
+    def add_filter(self, filter : Filter, metric_alias, args = [], alias=None):
 
         if metric_alias not in self.metrics:
             raise ValueError(f'No existe ninguna métrica con el alias {metric_alias}')
@@ -247,18 +250,19 @@ class Model(object):
             raise ValueError('El nombre ya existe, por favor, utilice otro.')
         
         filter_obj = filter(metric,*args)
-        logging.info(f'Filtrando {alias} ({filter_name}): {str(filter_obj)}.')
+        logging.debug(f'Filtrando {alias} ({filter_name}): {str(filter_obj)}.')
         
         
         metric.filters[alias] = filter_obj
-        self.update_filters()
+        self.filters[alias] = filter_obj
+        # self.update_filters()
         self.model_info()
     
 
     def update_filters(self):
         filters = {}
-        for model in self.metrics.values():
-            filters.update(model.filters)
+        for metric in self.metrics.values():
+            filters.update(metric.filters)
         self.filters = filters
 
 
@@ -275,18 +279,24 @@ class Model(object):
 
         filter = metric.filters[alias]
         name = filter.__name__
-        logging.info(f'Eliminando el filtro {alias} ({name}): {filter.min} < {metric.__name__} < {filter.max}.')
+        logging.debug(f'Eliminando el filtro {alias} ({name}): {filter.min} < {metric.__name__} < {filter.max}.')
         del metric.filters[alias]
-        self.update_filters()
+        del self.filters[alias]
+        # self.update_filters()
         self.model_info()
 
 
     def eval_metrics(self,data_set,metrics=None):
         if metrics is None:
-            metrics = self.metrics
+            metrics = self.metrics.keys()
 
-        for metric in metrics.values():
-            metric.eval(data_set)
+        for metric_alias in metrics:
+            try:
+                metric = self.metrics[metric_alias]
+            except:
+                continue
+            finally:
+                metric.eval(data_set)
     
     def eval_filters(self,filters=None):
         labels = 1
@@ -305,7 +315,7 @@ class Model(object):
         #TODO: Evaluar la medición del modelo según los datos dados.
         
         # Reconstruye los datos introducidos
-        test_recon = self.recon(data_set)
+        # test_recon = self.recon(data_set)
 
         # Calcula las métricas
         self.eval_metrics(data_set)
@@ -318,7 +328,7 @@ class Model(object):
         reco_labels = self.eval(data_set)
         FPR, TPR, _ = roc_curve(real_labels,reco_labels)
 
-        logging.info(f'Número de puntos de la curva: {len(FPR)}.')
+        logging.debug(f'Número de puntos de la curva: {len(FPR)}.')
         roc_auc = auc(FPR, TPR)
         fig,ax = plt.subplots(1,1)
         ax.plot(
@@ -379,7 +389,7 @@ class Model(object):
 
         BA = (TPR+TNR)/2
         F1 = 2*TP/(2*TP+FP+FN)
-        MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+        # MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
         FM = np.sqrt(PPV*TPR)
         BM = TPR+TNR-1
         MK = PPV+NPV-1
@@ -404,7 +414,7 @@ class Model(object):
 
             f'Threat Score (TS):\t{TS:.3f}\n'
             f'Balanced Accuracy (BA):\t{BA:.3f}\n'
-            f'Matthews Correlation Coefficient (MCC):\t{MCC:.3f}\n'
+            # f'Matthews Correlation Coefficient (MCC):\t{MCC:.3f}\n'
             f'Fowlkes-Mallows Index (FM):\t{FM:.3f}\n'
             f'Informedness (BM):\t{BM:.3f}\n'
             f'Markedness (MK):\t{MK:.3f}\n'
@@ -421,6 +431,7 @@ class Model(object):
             'TNR'   :TNR,
             'PPV'   :PPV,
             'FOR'   :FOR,
+            'ACC'   :ACC
         }
 
         return stats

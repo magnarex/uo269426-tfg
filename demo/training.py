@@ -16,7 +16,7 @@ import pickle
 from DQM.classes.metrics.MSE import MSE
 from DQM.classes.filters.MinMax import MinMax
 
-from DQM.utils.data import parent, train_cfg_dict, train_data_dict
+from DQM.utils.data import parent, train_cfg_dict, train_data_dict, obvs_list
 from DQM.utils.logging import begin_log
 from DQM.classes.Data import Data
 from DQM.classes.Model import Model
@@ -70,17 +70,18 @@ def train_model(train_data,train_cfg={}):
 
 def eval_model(eval_data:Data,model:Model,thresh):
 
-    thresh_ran = np.logspace(*thresh,num=100+1)
-    df = pd.DataFrame({},index=thresh_ran,columns=['TP','TN','FP','FN','TPR','TNR','PPV','FOR'])
+    thresh_ran = np.logspace(*thresh)
+    df = pd.DataFrame({},index=thresh_ran,columns=['TP','TN','FP','FN','TPR','TNR','ACC','FOR'])
+    
     
     for thresh in thresh_ran:
         model.add_filter(
             MinMax,
-            metric_alias='test_mse',
+            metric_alias='MSE',
             args=(0,thresh)
         )
         df.loc[thresh] = pd.Series(model.confusion(eval_data))
-        model.rmv_filter('MinMax_01','test_mse')
+        model.rmv_filter('MinMax_01','MSE')
 
     return df
 
@@ -156,7 +157,14 @@ def gen_model_stats(obvs,train_cfg,thresh,overwrite=False):
             with open(model_path,'wb+') as file:
                 pickle.dump(model,file)
             doOW = False
-    
+
+        try:
+            del model.metrics['test_mse']
+        except:
+            pass
+        
+        model.add_metric(MSE,'MSE')
+
         stats = eval_model(eval_data,model,thresh=thresh)
 
 
@@ -167,9 +175,8 @@ def gen_model_stats(obvs,train_cfg,thresh,overwrite=False):
 title_style = {'fontsize':14}
 fig_params = {'size' : (20,15),'constrained_layout':True}
 
-def plot_stats(obvs,per1,per2):
+def plot_stats(obvs,per1,per2,doShow=False):
 
-    # modes = [['LS','LS'],['LS','Run'],['Run','LS'],['Run','Run']]
     modes = [['LS','LS']]
     stats = {}
 
@@ -182,46 +189,19 @@ def plot_stats(obvs,per1,per2):
 
     x = df.index.values
 
-    fig,ax = plt.subplots(1,1)
-    for col in ['TPR','TNR','PPV','FOR']:
+    fig,ax = plt.subplots(1,1,figsize=(16/3,3))
+    for col in ['TNR','ACC','FOR']:
         ax.plot(x,stats['LL'][col],label=col)
-        ax.set_title('Entrenadas y evaluadas en LS',**title_style)
-
-    # if per1 == per2:
-    #     fig, (ax_LL,ax_RR) = plt.subplots(1,2)
-        # for col in ['TPR','TNR','PPV','FOR']:
-        #     ax_LL.plot(x,stats['LL'][col],label=col)
-        #     ax_RR.plot(x,stats['RR'][col],label=col)
-
-        #     ax_LL.set_title('Entrenadas y evaluadas\nen LS',**title_style)
-        #     ax_RR.set_title('Entrenadas y evaluadas\nen Runs',**title_style)
-    
-    # else:
-    #     fig, ((ax_LL,ax_LR),(ax_RL,ax_RR)) = plt.subplots(2,2)
-    #     for col in ['TPR','TNR','PPV','FOR']:
-    #         ax_LL.plot(x,stats['LL'][col],label=col)
-    #         ax_LR.plot(x,stats['LR'][col],label=col)
-    #         ax_RL.plot(x,stats['RL'][col],label=col)
-    #         ax_RR.plot(x,stats['RR'][col],label=col)
-
-    #         ax_LL.set_title('Evaluadas en LS',**title_style)
-    #         ax_LR.set_title('Evaluadas en Runs',**title_style)
-    
-    #         ax_LL.set_ylabel('Entrenadas en LS',**title_style)
-    #         ax_RL.set_ylabel('Entrenadas en Runs',**title_style)
-            
-            
-    
-    
+        # ax.set_title('Entrenadas y evaluadas en LS',**title_style)
 
 
     for ax in fig.get_axes():
         ax.set_xscale('log')
         ax.legend(loc=4)
-        ax.set_ylim(-0.01,1.01)
+        # ax.set_ylim(-0.01,1.01)
         ax.set_xlim(x.min(),x.max())
         ax.set_aspect('auto')
-        ax.set_xticks([1e-6,1e-5,1e-4])
+        ax.set_xticks([1e-7,1e-6,1e-5,1e-4])
         ax.set_yticks(np.linspace(0,1,6))
         ax.tick_params(
             axis = 'x',
@@ -230,12 +210,13 @@ def plot_stats(obvs,per1,per2):
         )
         ax.grid()
         ax.grid(which='minor',axis='x',linestyle='--',linewidth=0.3)
-        ax.set_xlabel(r'Valor del parámetro de corte del MSE, $\chi$ (u.a.)')
+        ax.set_xlabel(r'Valor del parámetro de corte del MSE, $\varepsilon$ (u.a.)')
         ax.set_ylabel(r'Valor del índice estadístico (u.a.)')
 
-
-    
+    plt.tight_layout()
     fig.savefig(parent+f'/graphs/stats_{obvs}/stats_{per1}_{per2}.jpeg',dpi=300)
+    if doShow: plt.show()
+    plt.close()
     del fig
 
 
@@ -248,21 +229,40 @@ def gen_plot_stats(obvs):
         for period2 in periods:
             plot_stats(obvs,period1,period2)
 
-        
-        
-
-
-
 
 
 def main():
     # gen_dict()
-    obvs = 'phi'
-    thresh = (-6,-4) #en escala log
-    # gen_model_stats(obvs,train_cfg_dict[obvs],thresh=thresh)
-    gen_plot_stats(obvs)
+    thresh = (-7,-4,301) #en escala log
+    skip_list=[]
+    # obvs_list = ['eta']
+    skip_list = ['eta']
+    for obvs in obvs_list:
+        if obvs in skip_list: continue
+        train_data,valid_data = Data().load(filename=obvs).training_validation()
+        # # model = train_model(train_data,train_cfg=train_cfg_dict[obvs])
+        # # with open(parent+f'/models/{obvs}_LS-all.model','wb+') as file:
+        # #             pickle.dump(model,file)
+        with open(parent+f'/models/{obvs}_LS-all.model','rb') as file:
+                    model = pickle.load(file)
+
+        try:
+            del model.metrics['test_mse']
+        except:
+            pass
+        
+        model.add_metric(MSE,'MSE')
+
+        stats = eval_model(valid_data,model,thresh=thresh)
+        # with open(parent+f'/eval/{obvs}_LS-all_LS-all.df','wb+') as file:
+        #         pickle.dump(stats,file)
+        plot_stats(obvs,'all','all',doShow=False)
     
 
+        # gen_model_stats(obvs,train_cfg_dict[obvs],thresh=thresh)
+        gen_plot_stats(obvs)
+    
+    # plot_stats('eta','A','B',doShow=True)
 
 if __name__ == '__main__':
     begin_log(parent,'training')

@@ -1,14 +1,26 @@
 {
     "eta" :{
         "N"         : 2,
-        "tol"       : 1e-4,
-        "max_iter"  : 10000,
+        "tol"       : 1e-6,
+        "max_iter"  : 100000,
         "seed"      : 1234
     },
     "phi" :{
         "N"         : 1,
-        "tol"       : 1e-4,
-        "max_iter"  : 10000,
+        "tol"       : 1e-6,
+        "max_iter"  : 100000,
+        "seed"      : 1234
+    },
+    "pt" :{
+        "N"         : 3,
+        "tol"       : 1e-7,
+        "max_iter"  : 100000,
+        "seed"      : 1234
+    },
+    "chi2" :{
+        "N"         : 3,
+        "tol"       : 1e-7,
+        "max_iter"  : 100000,
         "seed"      : 1234
     }
 }

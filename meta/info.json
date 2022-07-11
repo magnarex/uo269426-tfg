@@ -1,0 +1,4 @@
+{
+    "obvs" : ["eta","phi","pt","chi2"],
+    "eras" : ["A","B","C","D"]
+}

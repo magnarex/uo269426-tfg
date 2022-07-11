@@ -1,0 +1,18 @@
+{
+    "eta" :{
+        "filter"        : "MinMax",
+        "args"          : [0,4e-6]
+    },
+    "phi" :{
+        "filter"        : "MinMax",
+        "args"          : [0,5.2e-6]
+    },
+    "pt" :{
+        "filter"        : "MinMax",
+        "args"          : [0,9e-7]
+    },
+    "chi2" :{
+        "filter"        : "MinMax",
+        "args"          : [0,5e-6]
+    }
+}

@@ -30,17 +30,17 @@ begin_log(parent,'main')
 # Data('D','eta').minimum_entries(200).normalize()
 
 
-data = Data('D','pt').minimum_entries(200).normalize()
+data = Data('D','chi2').minimum_entries(200).normalize()
 # train, valid = data.training_validation(Fgood=0.6,Fbad=0.8)
 train = data
-valid = Data('C','pt').minimum_entries(200).normalize()
-# model = Model()
-# model.train(train,1)
-# model.plot_components()
-# model.add_metric(MSE,'test_mse')
-# model.save('test_pt_1')
+valid = Data('C','chi2').minimum_entries(200).normalize()
+model = Model()
+model.train(train,5)
+model.plot_components()
+model.add_metric(MSE,'test_mse')
+model.save('test_chi2_5')
 
-model = Model.load('test_pt_1')
+# model = Model.load('test_chi2_2')
 model.add_filter(
     MinMax,
     metric_alias='test_mse',
@@ -52,7 +52,7 @@ model.metrics['test_mse'].plot_metric()
 
 
 
-# data = Data('D','eta').minimum_entries(200).normalize()
+
 # train, valid = data.training_validation(Fgood=0.6,Fbad=0.8)
 
 

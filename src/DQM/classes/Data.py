@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import logging
 import copy
+import pickle
 
 from DQM.utils.data import names, parent
 from DQM.utils.dataframes import str2arr
@@ -30,23 +31,24 @@ class Data(object):
         'normalized' : False
     }
 
-    def __init__(self,period=None,obvs=None,load = True):
-        if isinstance(period,type(None)) and isinstance(obvs,type(None)) or not load:
+    def __init__(self,period='',obvs='',load = True):
+        if period == '' and obvs == '' or not load:
             self.period = period
             self.obvs = obvs
-            logging.info('Se ha creado satisfactoriamente el objeto Data.')
-        elif not isinstance(period,type(None)) and not isinstance(obvs,type(None)):
-            self.load(period,obvs)
+            self.data = pd.DataFrame({})
+            logging.debug('Se ha creado satisfactoriamente el objeto Data.')
+        elif not period == '' and not obvs == '':
+            self.load_csv(period,obvs)
         else:
             raise AttributeError('Debes indicar ambos argumentos o ninguno. Por favor, indica los valores del periodo y el observable de estudio.')
 
             
 
 
-    def load(self,period,obvs):
+    def load_csv(self,period,obvs):
         data = pd.read_csv(f'{parent}/data/csv/'+names[obvs][period]+'.csv')
         data['histo'] = data['histo'].apply(str2arr)
-        logging.info(f'Se han leído los datos del fichero {names[obvs][period]}.csv satisfactoriamente.')
+        logging.debug(f'Se han leído los datos del fichero {names[obvs][period]}.csv satisfactoriamente.')
 
         self.data = data
         self.period = period
@@ -57,11 +59,34 @@ class Data(object):
 
 
     def load_df(self,df):
-        logging.info('Se han leído los datos desde un objeto pandas.DataFrame.')
+        logging.debug('Se han leído los datos desde un objeto pandas.DataFrame.')
         self.data = df
         self.update_attributes()
         return self
+
+
+    def save(self,filename=None,parentdir=None):
+        if parentdir is None:
+            parentdir = parent + '/data/sets'
+
+        if filename is None:
+            filename = f'{self.obvs}_{self.period}'
+        
+        pickle.dump(self,open(f'{parentdir}/{filename}.dat','wb+'))
+        logging.info(f'Los datos han sido guardados en "{parentdir}/{filename}.dat".')
     
+
+    def load(self,filename=None,parentdir=None):
+        if parentdir is None:
+            parentdir = parent + '/data/sets'
+
+        data = pickle.load(open(f'{parentdir}/{filename}.dat','rb'))
+        
+        logging.info(f'Los datos han sido cargados de "{parentdir}/{filename}.dat".')
+        return data
+    
+
+
     def normalize(self):
         # Ahora las cuentas de los histogramas están en tantos por uno.
         data = self.data.copy()
@@ -70,7 +95,7 @@ class Data(object):
 
         del data
 
-        logging.info('Los valores de los histogramas han sido normalizados y ahora se encuentran en tanto por uno.')
+        logging.debug('Los valores de los histogramas han sido normalizados y ahora se encuentran en tanto por uno.')
         return self
 
     def minimum_entries(self,min_entries):
@@ -90,7 +115,7 @@ class Data(object):
         #TODO: Terminar de hacer esto, el mensaje no se muestra bien.
 
 
-        logging.info(
+        logging.debug(
             f'Se han eliminado {self.Nmin} entradas, con #entries <= {min_entries}, '
             f'que se corresponden con un {self.Fmin*100:2.2f}% del total. '
             f'Se han eliminado un {(1-Nbad/self.Nbad)*100:2.2f}% de las entradas malas\n'
@@ -105,29 +130,22 @@ class Data(object):
 
         return self
 
+    def apply_mask(self,mask):
+        data = self.data
+        idx = data.index.values[mask]
+        maskedData = Data(self.period,self.obvs,False)
+        maskedData.load_df(data.loc[idx,:])
 
+        return maskedData
 
     def training(self,Fgood=0.6,Fbad=0.8):
         self.training = train = Training(self,Fgood,Fbad)
-        data = self.data
-        train_idx = data.index.values[train.mask]
-        logging.info('Se procede a crear el training Data:')
-        trainData = Data(self.period,self.obvs,False)
-        trainData.load_df(data.loc[train_idx,:])
-
-        return trainData
+        return self.apply_mask(train.mask)
 
 
 
     def validation(self):
-        self.validation = valid = Validation(self)
-        data = self.data
-        valid_idx = data.index.values[valid.mask]
-        
-        logging.info('Se procede a crear el validation Data:')
-        validData = Data(self.period,self.obvs,False)
-        validData.load_df(data.loc[valid_idx,:])
-        return validData
+        return self.apply_mask(np.logical_not(self.training.mask))
     
 
 
@@ -136,8 +154,6 @@ class Data(object):
         validData = self.validation()
 
         return trainData,validData
-
-
 
     
     def get_bad(self,col='histo'):
@@ -173,7 +189,7 @@ class Data(object):
 
         self.ratio = self.Ngood/self.Nbad
 
-        logging.info(
+        logging.debug(
             'Se han actualizado los valores de los atributos:\n'
             f'\tNúmero de entradas:\t\t{self.Nentries}\n'
             f'\tNúmero de entradas buenas:\t{self.Ngood}\t({self.Fgood*100:2.2f}%)\n'
@@ -192,7 +208,7 @@ class Data(object):
         new_data = pd.DataFrame(columns=data.columns).drop('fromlumi',axis=1)
         runs = set(data['fromrun'].values)
 
-        logging.info('Se procede a colapsar las LS:')
+        logging.debug('Se procede a colapsar las LS:')
         for fromrun in runs:
             slice = data[data['fromrun'] == fromrun]
             entries = np.sum(slice['entries'])
@@ -210,16 +226,44 @@ class Data(object):
             }
 
             new_data = pd.concat([new_data,pd.DataFrame(new_row)],ignore_index=True,axis=0)
-        logging.info('Se ha terminado de colapsar las LS.\n')
+        logging.debug('Se ha terminado de colapsar las LS.\n')
         self.data = new_data
         self.update_attributes()
         # logging.info(f'{new_row}')
 
         return self
 
+    def __add__(self,other):
+        df_self = self.data.copy()
+        df_other = other.data.copy()
+        try:
+            assert (self.obvs == other.obvs) | (self.obvs == '') | (other.obvs == '')
+        except AssertionError:
+            raise ValueError('No se pueden sumar objetos Data con distinto observable.')
+
+        return Data(obvs=self.obvs,period=self.period+other.period,load=False).load_df(pd.concat([df_self,df_other]))
+
+
+
     
 
 if __name__ == '__main__':
     begin_log(parent,'Data')
+
+    logging.debug('A')
     a = Data('A','eta')
-    a.clean()
+    a.minimum_entries(200)
+
+    logging.debug('B')
+    b = Data('B','eta')
+    b.minimum_entries(200)
+
+    logging.debug('C')
+    c = Data('C','eta')
+    c.minimum_entries(200)
+
+    logging.debug('D')
+    d = Data('D','eta')
+    d.minimum_entries(200)
+
+    ab = sum([a,b],start=Data(load=False))
