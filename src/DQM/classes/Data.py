@@ -13,6 +13,7 @@ from DQM.utils.data import names, parent
 from DQM.utils.dataframes import str2arr
 from DQM.utils.logging import begin_log
 from DQM.classes.filters.Filter import Filter
+from DQM.classes.filters.Entries import Entries
 from DQM.classes.filters.Training import Training
 from DQM.classes.filters.Validation import Validation
 
@@ -59,6 +60,7 @@ class Data(object):
         logging.info('Se han leído los datos desde un objeto pandas.DataFrame.')
         self.data = df
         self.update_attributes()
+        return self
     
     def normalize(self):
         # Ahora las cuentas de los histogramas están en tantos por uno.
@@ -71,19 +73,28 @@ class Data(object):
         logging.info('Los valores de los histogramas han sido normalizados y ahora se encuentran en tanto por uno.')
         return self
 
-    def nonzero(self):
-        # Eliminamos las entradas vacías
+    def minimum_entries(self,min_entries):
+        # Eliminamos las entradas que no llegan al mínimo de eventos
         data = self.data.copy()
-        nonzero = data.entries != 0
-        data = data[nonzero]
+        filter = Entries(self,min_entries)
+        data = data[filter.mask]
         self.data = data
+        labels = data['labels'].values
         
-        self.Nzeros = np.logical_not(nonzero).sum()
-        self.Fzeros = self.Nzeros/self.Nentries
+        self.Nmin = np.logical_not(filter.mask).sum()
+        self.Fmin = self.Nmin/self.Nentries
+
+        Ngood = np.sum(labels)
+        Nbad = np.sum(np.logical_not(labels))
+
+        #TODO: Terminar de hacer esto, el mensaje no se muestra bien.
+
+
         logging.info(
-            f'Se han eliminado {self.Nzeros} entradas vacías,'
-            f'que se corresponden con un {self.Fzeros*100:2.2f}% del total y '
-            f'un {self.Nzeros/self.Nbad*100:2.2f}% de las entradas malas.\n'
+            f'Se han eliminado {self.Nmin} entradas, con #entries <= {min_entries}, '
+            f'que se corresponden con un {self.Fmin*100:2.2f}% del total. '
+            f'Se han eliminado un {(1-Nbad/self.Nbad)*100:2.2f}% de las entradas malas\n'
+            
         )
         
         
@@ -91,9 +102,10 @@ class Data(object):
         self.flags['nonzero'] = True
 
         del data
-        del nonzero
 
         return self
+
+
 
     def training(self,Fgood=0.6,Fbad=0.8):
         self.training = train = Training(self,Fgood,Fbad)
@@ -103,9 +115,9 @@ class Data(object):
         trainData = Data(self.period,self.obvs,False)
         trainData.load_df(data.loc[train_idx,:])
 
-
-
         return trainData
+
+
 
     def validation(self):
         self.validation = valid = Validation(self)
@@ -117,8 +129,9 @@ class Data(object):
         validData.load_df(data.loc[valid_idx,:])
         return validData
     
-    def training_validation(self,Fgood=0.6,Fbad=0.8):
-       
+
+
+    def training_validation(self,Fgood=0.6,Fbad=0.8): 
         trainData = self.training(Fgood,Fbad)
         validData = self.validation()
 
@@ -141,11 +154,6 @@ class Data(object):
         data = self.data
         return np.stack(data[col].to_numpy())
 
-
-    def clean(self):
-        self.nonzero()
-        self.normalize()
-        return self
 
 
     def update_attributes(self):
@@ -175,6 +183,39 @@ class Data(object):
 
         del data
 
+    def collapse_LS(self):
+        data = self.data
+        hname  = data.loc[0]['hname']
+        Xbins  = data.loc[0]['Xbins']
+        Xmin  = data.loc[0]['Xmin']
+        Xmax  = data.loc[0]['Xmax']
+        new_data = pd.DataFrame(columns=data.columns).drop('fromlumi',axis=1)
+        runs = set(data['fromrun'].values)
+
+        logging.info('Se procede a colapsar las LS:')
+        for fromrun in runs:
+            slice = data[data['fromrun'] == fromrun]
+            entries = np.sum(slice['entries'])
+            histo = np.stack(slice['histo'].to_numpy()).sum(axis=0)
+            labels = slice['labels'].values[0] #porque es la misma para todas las LS de una run
+            new_row = {
+                'fromrun'   : fromrun,
+                'labels'    : labels,
+                'hname'     : hname,
+                'histo'     : [histo],
+                'entries'   : entries,
+                'Xbins'     : Xbins,
+                'Xmin'      : Xmin,
+                'Xmax'      : Xmax
+            }
+
+            new_data = pd.concat([new_data,pd.DataFrame(new_row)],ignore_index=True,axis=0)
+        logging.info('Se ha terminado de colapsar las LS.\n')
+        self.data = new_data
+        self.update_attributes()
+        # logging.info(f'{new_row}')
+
+        return self
 
     
 

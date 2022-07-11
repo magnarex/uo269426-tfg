@@ -19,10 +19,12 @@ class MinMax(Filter):
     def __init__(self,target:Metric,min,max):
         self.min = min
         self.max = max
-        super().__init__(target, min, max,doFilter=False)
+        super().__init__(target, min, max,eval=False)
     
     def filter(self,target:Metric):
-        return (self.min <= target.metric)&(target.metric <= max)
+        # print('Self Min',self.min,type(self.min))
+        # print('Target Metric',target.metric,type(target.metric))
+        return (self.min <= target.metric)&(target.metric <= self.max)
 
     def __str__(self):
         return f'{self.min} <= {self.target} <= {self.max}'

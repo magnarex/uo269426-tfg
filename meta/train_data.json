@@ -1,0 +1,162 @@
+{
+    "LS-A_LS-A": {
+        "name": "LS-A_LS-A",
+        "func": "data_same",
+        "kwargs": {
+            "period1": "A",
+            "mode1": "LS",
+            "period2": "A",
+            "mode2": "LS"
+        }
+    },
+    "LS-A_LS-B": {
+        "name": "LS-A_LS-B",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "A",
+            "mode1": "LS",
+            "period2": "B",
+            "mode2": "LS"
+        }
+    },
+    "LS-A_LS-C": {
+        "name": "LS-A_LS-C",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "A",
+            "mode1": "LS",
+            "period2": "C",
+            "mode2": "LS"
+        }
+    },
+    "LS-A_LS-D": {
+        "name": "LS-A_LS-D",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "A",
+            "mode1": "LS",
+            "period2": "D",
+            "mode2": "LS"
+        }
+    },
+    "LS-B_LS-A": {
+        "name": "LS-B_LS-A",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "B",
+            "mode1": "LS",
+            "period2": "A",
+            "mode2": "LS"
+        }
+    },
+    "LS-B_LS-B": {
+        "name": "LS-B_LS-B",
+        "func": "data_same",
+        "kwargs": {
+            "period1": "B",
+            "mode1": "LS",
+            "period2": "B",
+            "mode2": "LS"
+        }
+    },
+    "LS-B_LS-C": {
+        "name": "LS-B_LS-C",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "B",
+            "mode1": "LS",
+            "period2": "C",
+            "mode2": "LS"
+        }
+    },
+    "LS-B_LS-D": {
+        "name": "LS-B_LS-D",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "B",
+            "mode1": "LS",
+            "period2": "D",
+            "mode2": "LS"
+        }
+    },
+    "LS-C_LS-A": {
+        "name": "LS-C_LS-A",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "C",
+            "mode1": "LS",
+            "period2": "A",
+            "mode2": "LS"
+        }
+    },
+    "LS-C_LS-B": {
+        "name": "LS-C_LS-B",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "C",
+            "mode1": "LS",
+            "period2": "B",
+            "mode2": "LS"
+        }
+    },
+    "LS-C_LS-C": {
+        "name": "LS-C_LS-C",
+        "func": "data_same",
+        "kwargs": {
+            "period1": "C",
+            "mode1": "LS",
+            "period2": "C",
+            "mode2": "LS"
+        }
+    },
+    "LS-C_LS-D": {
+        "name": "LS-C_LS-D",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "C",
+            "mode1": "LS",
+            "period2": "D",
+            "mode2": "LS"
+        }
+    },
+    "LS-D_LS-A": {
+        "name": "LS-D_LS-A",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "D",
+            "mode1": "LS",
+            "period2": "A",
+            "mode2": "LS"
+        }
+    },
+    "LS-D_LS-B": {
+        "name": "LS-D_LS-B",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "D",
+            "mode1": "LS",
+            "period2": "B",
+            "mode2": "LS"
+        }
+    },
+    "LS-D_LS-C": {
+        "name": "LS-D_LS-C",
+        "func": "data_diff",
+        "kwargs": {
+            "period1": "D",
+            "mode1": "LS",
+            "period2": "C",
+            "mode2": "LS"
+        }
+    },
+    "LS-D_LS-D": {
+        "name": "LS-D_LS-D",
+        "func": "data_same",
+        "kwargs": {
+            "period1": "D",
+            "mode1": "LS",
+            "period2": "D",
+            "mode2": "LS"
+        }
+    }
+}

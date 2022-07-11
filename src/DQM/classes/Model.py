@@ -1,7 +1,6 @@
 import sys
 import os
 
-from sklearn import metrics
 parentdir = os.getcwd().split('DQM-DC NMF')[0]+'DQM-DC NMF'
 sys.path.insert(0, parentdir+'/src')
 del parentdir
@@ -11,7 +10,10 @@ import numpy as np
 import logging
 import pickle
 from sklearn.decomposition import NMF
+from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+
+
 from DQM.utils.data import parent
 from DQM.utils.logging import begin_log
 from DQM.classes.filters.Filter import Filter
@@ -23,17 +25,18 @@ class Model(object):
     # ha entrenado, ya que hace que almacenarlo sea muy costoso.
 
     #TODO: Añadir funcionalidad de entrenar y evaluar por separado.
-    seed = None
-    N = None
-    tol = None
-
-    flags = {
-        'trained'   : False,
-    }
-
-    metrics = {}
+    
+    
 
     def __init__(self):
+        self.metrics = {}
+        self.filters = {}
+        self.flags = {
+            'trained'   : False,
+        }
+        self.seed = None
+        self.N = None
+        self.tol = None
         logging.info('Se ha creado el objeto Modelo a partir del objeto Data.')
 
     def train(self,train_set,N,max_iter=10000,tol=1e-4,seed=None):     
@@ -115,15 +118,10 @@ class Model(object):
             +
             '\tfilters:\n'
             +
-            '\n'.join(sum([
-                    [
-                        f'\t\t- {filter_alias} ({filter.__name__})\t: {str(filter)}'
-                        for filter_alias,filter in metric.filters.items()
-                    ]
-                    for metric_alias,metric in self.metrics.items()
-                ],
-                []    
-            ))
+            '\n'.join([
+                f'\t\t- {filter_alias} ({filter.__name__})\t: {str(filter)}'
+                for filter_alias,filter in self.filters.items()
+            ])
             +
             '\n'
         )
@@ -131,7 +129,7 @@ class Model(object):
 
     def plot_components(self):
         fig,ax = plt.subplots(1,1)
-        comp = self.components
+        comp = self.model.components_
         ax.step(self.bins,comp.T,where='mid')
         ax.legend([f'Comp. {i}' for i in range(self.N)])
         plt.show(block=True)
@@ -253,9 +251,15 @@ class Model(object):
         
         
         metric.filters[alias] = filter_obj
+        self.update_filters()
         self.model_info()
     
 
+    def update_filters(self):
+        filters = {}
+        for model in self.metrics.values():
+            filters.update(model.filters)
+        self.filters = filters
 
 
 
@@ -273,28 +277,75 @@ class Model(object):
         name = filter.__name__
         logging.info(f'Eliminando el filtro {alias} ({name}): {filter.min} < {metric.__name__} < {filter.max}.')
         del metric.filters[alias]
+        self.update_filters()
         self.model_info()
 
 
+    def eval_metrics(self,data_set,metrics=None):
+        if metrics is None:
+            metrics = self.metrics
+
+        for metric in metrics.values():
+            metric.eval(data_set)
+    
+    def eval_filters(self,filters=None):
+        labels = 1
+
+        for metric in self.metrics.values():
+            for filter in metric.filters.values():
+                filter.eval(metric)
+                labels = labels*filter.mask
+
+        return labels
 
 
-    def eval(self):
+    def eval(self,data_set):
+        #TODO: Dar una lista de las métricas/filtros que se quieren evaluar.
 
         #TODO: Evaluar la medición del modelo según los datos dados.
-        #TODO: Dar una lista de las métricas/filtros que se quieren evaluar.
+        
         # Reconstruye los datos introducidos
-        # Calcula las métricas
-        # Colapsa todos los filtros para calcular el valor de las etiquetas.
-        labels = np.ones(self.src.Nentries)
-        for filter in self.filters.values():
-            labels *= filter.value
-        self.recon_labels = labels
-    
-    def confusion(self,test_set):
+        test_recon = self.recon(data_set)
 
-        real = test_set.data['labels']
-        recon = self.recon_labels
-        total = test_set.Nentries
+        # Calcula las métricas
+        self.eval_metrics(data_set)
+        # Colapsa todos los filtros para calcular el valor de las etiquetas.
+        return self.eval_filters()
+
+
+    def roc_curve(self,data_set,lw=2):
+        real_labels = data_set.data['labels'].values
+        reco_labels = self.eval(data_set)
+        FPR, TPR, _ = roc_curve(real_labels,reco_labels)
+
+        logging.info(f'Número de puntos de la curva: {len(FPR)}.')
+        roc_auc = auc(FPR, TPR)
+        fig,ax = plt.subplots(1,1)
+        ax.plot(
+            FPR,
+            TPR,
+            color="darkorange",
+            lw=lw,
+            label="ROC curve (area = %0.2f)" % roc_auc,
+        )
+        plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+        ax.set_xlabel("False Positive Rate")
+        ax.set_ylabel("True Positive Rate")
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.legend(loc="lower right")
+        plt.show()
+
+
+
+
+
+
+    def confusion(self,data_set):
+
+        real = data_set.data['labels']
+        recon = self.eval(data_set)
+        total = data_set.Nentries
         
         is_P = recon == True
         is_N = recon == False
@@ -361,7 +412,18 @@ class Model(object):
 
         )
 
+        stats = {
+            'TP'    :TP,
+            'TN'    :TN,
+            'FP'    :FP,
+            'FN'    :FN,
+            'TPR'   :TPR,
+            'TNR'   :TNR,
+            'PPV'   :PPV,
+            'FOR'   :FOR,
+        }
 
+        return stats
 
 
 
